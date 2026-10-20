@@ -84,6 +84,7 @@ class AuthenticationTest extends TestCase
     public function test_private_routes_require_authentication(): void
     {
         $this->getJson('/api/auth/user')->assertUnauthorized();
+        $this->get('/api/auth/user')->assertUnauthorized()->assertHeader('Content-Type', 'application/json');
         $this->postJson('/api/auth/logout')->assertUnauthorized();
         $this->getJson('/api/auth/csrf')->assertOk()->assertJsonStructure(['token']);
     }

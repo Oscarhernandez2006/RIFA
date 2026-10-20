@@ -116,15 +116,42 @@ por IP. El endpoint de usuario requiere autenticacion y no expone hashes.
 | POST | `/api/auth/login` | Validar credenciales y abrir sesion |
 | GET | `/api/auth/user` | Consultar usuario autenticado |
 | POST | `/api/auth/logout` | Invalidar sesion |
+| GET | `/api/invoices` | Listar las facturas del cliente autenticado |
+| POST | `/api/invoices` | Validar y registrar una factura (`invoice_number`) |
 
 Las solicitudes POST requieren `X-CSRF-TOKEN` obtenido de `/api/auth/csrf`
 y la misma cookie de sesion. No excluyas estas rutas de la proteccion CSRF.
 Las respuestas privadas llevan `Cache-Control: no-store`.
 
-La pantalla privada es la base responsive para el futuro formulario de facturas.
-Todavia no guarda facturas ni genera participaciones: falta definir sus campos
-y reglas. La recuperacion de contrasena tampoco esta habilitada y lo informa
-explicitamente, sin simular el envio de correos.
+## Registro de facturas
+
+En `/facturas` el cliente escribe el numero de documento tal como aparece en la
+factura, por ejemplo `07F-00028641` (se acepta en minusculas y sin ceros a la
+izquierda). Laravel lo separa en tipo `07F` y consecutivo `28641` y consulta
+`facturas-pos` con `cia=4` y el rango de la campana (1 de octubre a 31 de
+diciembre de 2026). El token viaja como parametro `token` solo desde el servidor;
+nunca llega al navegador ni se escribe en los logs.
+
+- Si la API devuelve la factura (y su `nro_documento` coincide), se guarda en la
+  tabla `invoices` con numero, fecha, punto de venta y valor neto, y aparece en
+  «Mis facturas». No se guardan datos personales del comprador.
+- Cada factura se registra una sola vez en toda la campana (indice unico por
+  compania, tipo y consecutivo), aunque lo intente otra cuenta.
+- Se rechazan formatos invalidos, facturas inexistentes y facturas anuladas
+  (`fecha_ts_anulacion`). Si la API falla o no responde, se informa con HTTP 503
+  y no se guarda nada.
+- El registro admite 10 intentos por minuto por cliente.
+
+Configuracion (`backend/.env` o Dokploy): `INVOICE_API_QUERY_TOKEN` (obligatorio),
+`INVOICE_API_URL`, `INVOICE_COMPANY`, `INVOICE_CAMPAIGN_START` e
+`INVOICE_CAMPAIGN_END` (con los valores anteriores por defecto).
+
+Observado el 20 de octubre de 2026: la API solo devolvia datos desde el 16 de
+octubre aproximadamente, aunque el rango solicitado empiece el 1 de octubre.
+Facturas anteriores a esa ventana se informan como no encontradas.
+
+La recuperacion de contrasena no esta habilitada y lo informa explicitamente,
+sin simular el envio de correos.
 Los electrodomesticos son ilustraciones, no premios confirmados.
 La composicion incluye nevera, lavadora, freidora, televisor, microondas y
 licuadora, con movimiento suave continuo, sin boton de pausa. La animacion se
@@ -142,7 +169,7 @@ configurado. Usa `SESSION_SECURE_COOKIE=true` con HTTPS.
 En produccion usa HTTPS, `APP_ENV=production`, `APP_DEBUG=false`,
 un servidor web adecuado para Laravel y sirve `frontend/dist` como archivos estaticos.
 El proxy de Vite es solo para desarrollo; `npm run preview` no sustituye un despliegue.
-La autenticacion esta implementada; las reglas de rifas y facturas estan pendientes.
+La autenticacion y el registro de facturas estan implementados; el sorteo y sus reglas estan pendientes.
 
 ## Despliegue con Dokploy (Docker)
 

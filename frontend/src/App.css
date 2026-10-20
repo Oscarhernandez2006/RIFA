@@ -68,8 +68,28 @@ button:disabled { opacity: .65; cursor: wait; }
 .invoice-card { background: #fffdf9; border: 1px solid #e2d9cd; border-radius: 18px; padding: 28px; min-width: 0; }
 .invoice-card h2 { font: 400 30px Georgia, serif; }
 .invoice-card p { color: var(--muted); line-height: 1.7; }
-.invoice-coming { padding: 20px; background: #f6ecd8; color: #74571c; border-radius: 10px; line-height: 1.6; }
 .invoice-note { font-size: 13px; }
+.invoice-form { margin: 22px 0 6px; }
+.invoice-form .field input { height: 54px; font-size: 18px; letter-spacing: .06em; font-family: ui-monospace, Consolas, monospace; }
+.invoice-form .field-hint { display: block; margin: 2px 0 0; }
+.invoice-form .primary-button { margin-top: 6px; }
+.invoice-form .form-message { margin: 14px 0 0; }
+.success-message { background: #edf7ef; color: #1d6233; border-color: #b8dcc1; }
+.invoice-list-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.invoice-count { color: var(--muted); font-size: 14px; }
+.invoice-loading { padding: 20px 0; }
+.invoice-list { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 12px; }
+.invoice-list li { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 16px; border: 1px solid #e9e0d4; border-radius: 12px; background: #fff; min-width: 0; }
+.invoice-list li > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.invoice-list li strong { font-family: ui-monospace, Consolas, monospace; font-size: 16px; overflow-wrap: anywhere; }
+.invoice-list li span { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.invoice-amount { align-items: flex-end; text-align: right; flex-shrink: 0; }
+.invoice-amount strong { font-family: inherit; color: var(--ink); }
+.invoice-list .invoice-badge { color: #1d6233; background: #edf7ef; border-radius: 20px; padding: 3px 10px; font-size: 12px; font-weight: 700; }
+@media (max-width: 420px) {
+  .invoice-list li { flex-direction: column; align-items: flex-start; }
+  .invoice-amount { align-items: flex-start; text-align: left; }
+}
 .invoice-empty { text-align: center; padding: 20px 0; }
 .invoice-empty > span { display: inline-grid; place-items: center; width: 50px; height: 50px; border-radius: 50%; color: var(--red-deep); background: #f4e3dd; font-size: 28px; }
 @media (max-width: 760px) {

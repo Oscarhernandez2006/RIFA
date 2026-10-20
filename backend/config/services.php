@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'invoices' => [
+        'url' => env('INVOICE_API_URL', 'https://apiconsulta.grupo-santacruz.com/ventas/facturas-pos'),
+        'token' => env('INVOICE_API_QUERY_TOKEN'),
+        'company' => (int) env('INVOICE_COMPANY', 4),
+        'start_date' => env('INVOICE_CAMPAIGN_START', '2026-10-01'),
+        'end_date' => env('INVOICE_CAMPAIGN_END', '2026-12-31'),
+    ],
+
 ];

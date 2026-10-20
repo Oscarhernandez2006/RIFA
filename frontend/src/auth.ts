@@ -16,14 +16,14 @@ export class ApiError extends Error {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-async function request(path: string, init: RequestInit = {}): Promise<unknown> {
+export async function apiRequest(path: string, init: RequestInit = {}): Promise<unknown> {
   let response: Response
   try {
-    response = await fetch(`${baseUrl}/auth/${path}`, {
+    response = await fetch(`${baseUrl}/${path}`, {
       ...init,
       credentials: 'include',
       headers: { Accept: 'application/json', ...init.headers },
@@ -42,7 +42,9 @@ async function request(path: string, init: RequestInit = {}): Promise<unknown> {
   if (!response.ok) {
     let message = response.status === 419
       ? 'La sesión expiró. Vuelve a intentar.'
-      : response.status === 429
+      : response.status === 401
+        ? 'Tu sesión expiró. Vuelve a iniciar sesión.'
+        : response.status === 429
         ? 'Demasiados intentos. Espera un minuto y vuelve a intentar.'
         : response.status >= 500
           ? 'Ocurrió un error en el servidor. Inténtalo más tarde.'
@@ -50,6 +52,8 @@ async function request(path: string, init: RequestInit = {}): Promise<unknown> {
     if (response.status === 422 && isRecord(data) && isRecord(data.errors)) {
       const errors = Object.values(data.errors).flat().filter((value): value is string => typeof value === 'string')
       if (errors.length) message = errors.join(' ')
+    } else if (response.status === 503 && isRecord(data) && typeof data.message === 'string') {
+      message = data.message
     }
     throw new ApiError(message, response.status)
   }
@@ -57,16 +61,24 @@ async function request(path: string, init: RequestInit = {}): Promise<unknown> {
   return data
 }
 
-export async function authAction(action: 'register' | 'login' | 'logout', body: Record<string, string> = {}) {
-  const csrf = await request('csrf')
+export async function csrfToken() {
+  const csrf = await apiRequest('auth/csrf')
   if (!isRecord(csrf) || typeof csrf.token !== 'string') {
     throw new ApiError('No se pudo preparar la sesión. Recarga la página.', 0)
   }
-  return request(action, {
+  return csrf.token
+}
+
+export async function postJson(path: string, body: Record<string, string> = {}) {
+  return apiRequest(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf.token },
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': await csrfToken() },
     body: JSON.stringify(body),
   })
+}
+
+export async function authAction(action: 'register' | 'login' | 'logout', body: Record<string, string> = {}) {
+  return postJson(`auth/${action}`, body)
 }
 
 export function readUser(data: unknown): User {
@@ -80,7 +92,7 @@ export function readUser(data: unknown): User {
 
 export async function currentUser() {
   try {
-    return readUser(await request('user'))
+    return readUser(await apiRequest('auth/user'))
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) return null
     throw error
