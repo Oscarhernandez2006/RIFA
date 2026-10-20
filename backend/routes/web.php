@@ -1,11 +1,8 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\FrontendController;
 use Illuminate\Support\Facades\Route;
-
-Route::get('/', function () {
-    return view('welcome');
-});
 
 Route::prefix('api/auth')->group(function () {
     Route::get('/csrf', [AuthController::class, 'csrf']);
@@ -17,3 +14,6 @@ Route::prefix('api/auth')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
     });
 });
+
+Route::get('/{path?}', FrontendController::class)
+    ->where('path', '(?!api(?:/|$)|up$).*');

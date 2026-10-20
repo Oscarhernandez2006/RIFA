@@ -144,6 +144,51 @@ un servidor web adecuado para Laravel y sirve `frontend/dist` como archivos esta
 El proxy de Vite es solo para desarrollo; `npm run preview` no sustituye un despliegue.
 La autenticacion esta implementada; las reglas de rifas y facturas estan pendientes.
 
+## Despliegue con Dokploy (Docker)
+
+El `Dockerfile` de la raiz genera una sola imagen: compila React con Node 22
+y sirve Laravel con PHP 8.5 y Apache en el puerto **80**. Frontend y `/api`
+comparten dominio, por lo que no hace falta `VITE_API_BASE_URL` ni CORS.
+Laravel entrega la app React en `/` y `/facturas`; `/api/*` y `/up` siguen
+siendo de Laravel. `/up` se usa como comprobacion de salud del contenedor.
+
+En Dokploy: tipo de compilacion **Dockerfile**, ruta `Dockerfile`, contexto `.`
+y puerto del dominio **80**. Configura estas variables en *Environment*
+(nunca en el repositorio):
+
+```dotenv
+APP_NAME=Boletas
+APP_ENV=production
+APP_DEBUG=false
+APP_KEY=base64:...            # genera una con: php artisan key:generate --show
+APP_URL=https://tu-dominio
+FRONTEND_URL=https://tu-dominio
+APP_LOCALE=es
+LOG_CHANNEL=stderr
+LOG_LEVEL=warning
+DB_CONNECTION=pgsql
+DB_HOST=...
+DB_PORT=...
+DB_DATABASE=...
+DB_USERNAME=...
+DB_PASSWORD="..."
+DB_SSLMODE=disable            # el servidor actual no admite TLS
+SESSION_DRIVER=database
+SESSION_SECURE_COOKIE=true
+CACHE_STORE=file
+QUEUE_CONNECTION=sync
+INVOICE_API_QUERY_TOKEN=...
+```
+
+Si PostgreSQL tambien esta en Dokploy, usa su host interno de la red Docker en
+lugar de la IP publica, asi la conexion sin TLS no sale a internet.
+
+Al arrancar, el contenedor exige `APP_KEY`, genera las caches de configuracion,
+rutas y vistas, y ejecuta `php artisan migrate --force`, que solo aplica
+migraciones pendientes y no borra datos. Para desactivarlo usa
+`RUN_MIGRATIONS=false`. Laravel confia en los encabezados del proxy de Dokploy
+para detectar HTTPS y marcar las cookies como seguras.
+
 ## Validacion
 
 ```bash

@@ -1,0 +1,16 @@
+.git
+.vscode
+**/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+frontend/dist
+backend/vendor
+backend/resources/frontend
+backend/bootstrap/cache/*.php
+backend/storage/logs/*
+backend/storage/framework/cache/data/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+!backend/storage/**/.gitignore
+**/*.log
