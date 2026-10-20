@@ -1,0 +1,28 @@
+:root {
+  font-family: 'Trebuchet MS', Arial, sans-serif;
+  color: #302521;
+  background: #faf7f1;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --red: #b91f29;
+  --red-deep: #8b1822;
+  --gold: #f3cd76;
+  --cream: #faf7f1;
+  --ink: #302521;
+  --muted: #766a63;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+button, input { font: inherit; }
+button, a, input { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+a { color: inherit; }
+button:focus-visible, a:focus-visible { outline: 3px solid #b47913; outline-offset: 4px; }
+button { touch-action: manipulation; }
+::selection { background: #f3cd76; color: #302521; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+}
