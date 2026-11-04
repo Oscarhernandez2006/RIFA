@@ -6,10 +6,9 @@
 .brand strong { display: block; font-size: 26px; font-weight: 700; }
 .header-label { display: flex; align-items: center; gap: 8px; color: var(--red-deep); font-size: 12px; font-weight: 700; }
 .header-label svg { width: 19px; }
-.auth-layout { display: grid; grid-template-columns: 1.05fr 1fr; margin: 30px 3.5% 0; border: 1px solid #e9e0d4; border-radius: 22px; overflow: hidden; background: #fffdf9; box-shadow: 0 16px 60px #50312408; }
-.campaign { position: relative; isolation: isolate; overflow: hidden; background: linear-gradient(145deg, #d32a2c 0%, #b61b28 52%, #7b1721 100%); color: #fff9ed; padding: 32px 40px 24px; display: flex; flex-direction: column; }
-.campaign::before, .campaign::after { content: ''; position: absolute; z-index: -1; border-radius: 50%; border: 1px solid #f3cd761a; width: 660px; height: 660px; right: -390px; top: 65px; box-shadow: 0 0 0 45px #f3cd7606, 0 0 0 90px #f3cd7605, 0 0 0 135px #f3cd7604; }
-.campaign::after { width: 320px; height: 320px; left: -220px; top: auto; bottom: -200px; }
+.auth-layout { align-self: start; display: grid; grid-template-columns: 1.05fr 1fr; margin: 30px 3.5% 0; border: 1px solid #e9e0d4; border-radius: 22px; overflow: hidden; background: #fffdf9; box-shadow: 0 16px 60px #50312408; }
+.campaign { position: relative; overflow: hidden; background: #48160f; display: grid; align-items: center; }
+.campaign img { display: block; width: 100%; height: auto; }
 .campaign-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .campaign-badge { display: flex; align-items: center; gap: 7px; font-size: 9px; letter-spacing: 1px; border: 1px solid #f3cd7659; border-radius: 30px; padding: 9px 11px; color: #ffe5ad; }
 .campaign-badge > span { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); }
@@ -141,7 +140,6 @@ button:disabled { opacity: .65; cursor: wait; }
   .site-header { min-height: 72px; padding-top: 8px; padding-bottom: 8px; }
   .brand img { width: 48px; height: 48px; }
   .auth-layout { margin-top: 14px; }
-  .campaign { padding: 22px 30px 18px; }
   .campaign-copy { margin-top: 22px; }
   .campaign h1 { font-size: clamp(30px, 3vw, 44px); }
   .campaign-eyebrow { margin-bottom: 10px; }
@@ -166,7 +164,6 @@ button:disabled { opacity: .65; cursor: wait; }
   .switch-copy { margin: 12px 0; }
 }
 @media (min-width: 761px) and (max-width: 1000px) {
-  .campaign { padding-right: 22px; padding-left: 22px; }
   .campaign h1 { font-size: 30px; }
   .participation li { flex-direction: column; align-items: flex-start; }
   .auth-panel { padding-right: 22px; padding-left: 22px; }
@@ -177,7 +174,6 @@ button:disabled { opacity: .65; cursor: wait; }
   .brand img { width: 44px; height: 44px; }
   .auth-layout { margin-top: 10px; }
   .prize-art { height: clamp(190px, 31svh, 260px); }
-  .campaign { padding-top: 16px; padding-bottom: 14px; }
   .campaign-copy { margin-top: 14px; }
   .campaign-description { margin-top: 8px; }
   .campaign-footnote { margin-top: 8px; }
@@ -199,7 +195,6 @@ button:disabled { opacity: .65; cursor: wait; }
   .brand strong { font-size: 23px; }
   .header-label { font-size: 10px; gap: 5px; }
   .auth-layout { grid-template-columns: 1fr; margin: 18px 4% 0; border-radius: 18px; }
-  .campaign { padding: 26px; }
   .campaign-copy { margin-top: 27px; }
   .campaign h1 { font-size: clamp(32px, 7vw, 46px); letter-spacing: -1px; }
   .campaign-description { max-width: 340px; font-size: 12px; }

@@ -22,64 +22,6 @@ function Icon({ name }: { name: IconName }) {
   return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>
 }
 
-function Prizes() {
-  return (
-    <svg className="prize-art" viewBox="0 0 440 250" fill="none" aria-hidden="true">
-      <ellipse cx="230" cy="229" rx="183" ry="13" fill="#490c11" opacity=".22" />
-      <g stroke="#f6d3a4" strokeWidth="2">
-        <g className="appliance appliance-tv">
-          <rect x="222" y="21" width="145" height="78" rx="6" fill="#302c2b" stroke="#d4ae7c" />
-          <rect x="229" y="28" width="131" height="62" rx="2" fill="#4c6867" stroke="none" />
-          <path d="m230 89 70-60h60v19l-47 42Z" fill="#8da7a0" opacity=".4" stroke="none" />
-          <path d="m278 100-7 10m43-10 7 10" stroke="#d4ae7c" strokeWidth="4" strokeLinecap="round" />
-        </g>
-        <g className="appliance appliance-fridge">
-        <rect x="91" y="19" width="108" height="204" rx="10" fill="#fff4df" />
-        <path d="M92 88h106" stroke="#d5b799" />
-        <path d="M181 47v23m0 39v42" stroke="#7c5a4a" strokeWidth="5" strokeLinecap="round" />
-        <rect x="105" y="30" width="16" height="6" rx="2" fill="#d8b689" stroke="none" />
-        <path d="M103 223v6m85-6v6" stroke="#55352d" strokeWidth="5" />
-        </g>
-        <g className="appliance appliance-washer">
-        <rect x="210" y="91" width="130" height="132" rx="9" fill="#fdf4e4" />
-        <path d="M211 120h128" stroke="#d5b799" />
-        <circle cx="277" cy="172" r="39" fill="#d4b59a" stroke="#e8d3b6" strokeWidth="7" />
-        <circle cx="277" cy="172" r="29" fill="#453834" stroke="#796356" strokeWidth="3" />
-        <path d="M259 176c9-13 18 12 36-5" stroke="#b4c6c0" strokeWidth="6" />
-        <circle cx="226" cy="106" r="4" fill="#a37b5a" stroke="none" />
-        <path d="M240 106h13m54 0h19" stroke="#a37b5a" strokeWidth="3" />
-        </g>
-        <g className="appliance appliance-fryer">
-        <rect x="316" y="164" width="66" height="59" rx="12" fill="#34302d" stroke="#c89a60" />
-        <path d="M319 188h60m-30 0v15" stroke="#b99b75" strokeWidth="3" />
-        <rect x="333" y="171" width="32" height="8" rx="4" fill="#d6b477" stroke="none" />
-        </g>
-        <g className="appliance appliance-microwave">
-          <rect x="13" y="163" width="113" height="61" rx="8" fill="#e4ccab" />
-          <rect x="21" y="172" width="74" height="42" rx="4" fill="#383936" stroke="#a88d70" />
-          <path d="m28 205 43-27h16v8l-43 26H28Z" fill="#71817a" opacity=".6" stroke="none" />
-          <path d="M89 182v20" stroke="#e4ccab" strokeWidth="3" strokeLinecap="round" />
-          <rect x="102" y="175" width="16" height="8" rx="2" fill="#46564c" stroke="none" />
-          <circle cx="110" cy="198" r="5" fill="#795b43" stroke="none" />
-        </g>
-        <g className="appliance appliance-blender">
-          <path d="m43 87 5 53h32l5-53Z" fill="#c5ded0" fillOpacity=".85" />
-          <path d="M85 96h8c12 0 11 28-10 28" stroke="#e4ccab" strokeWidth="5" />
-          <path d="m52 124 12 7 12-7M64 112v19" stroke="#6f8374" strokeWidth="2" />
-          <rect x="40" y="81" width="48" height="8" rx="4" fill="#36322e" stroke="#bb945c" />
-          <path d="m49 140-7 19a4 4 0 0 0 4 5h36a4 4 0 0 0 4-5l-7-19Z" fill="#36322e" stroke="#bb945c" />
-          <circle cx="64" cy="153" r="4" fill="#edcc83" stroke="none" />
-        </g>
-      </g>
-      <g className="prize-sparkles" fill="#f5cc69">
-        <path d="m60 76 3 9 9 3-9 3-3 9-3-9-9-3 9-3Zm300-46 4 12 12 4-12 4-4 12-4-12-12-4 12-4Z" />
-        <circle cx="389" cy="121" r="3" /><circle cx="48" cy="179" r="3" />
-        <path d="m228 40 4-9m-191 97 7 4m334 60 8-5" stroke="#f5cc69" strokeWidth="3" strokeLinecap="round" />
-      </g>
-    </svg>
-  )
-}
-
 function PasswordField({ confirm = false, newAccount = false }: { confirm?: boolean; newAccount?: boolean }) {
   const [visible, setVisible] = useState(false)
   const id = useId()
@@ -241,28 +183,11 @@ function App() {
       </header>
 
       <main className="auth-layout">
-        <section className="campaign" aria-labelledby="campaign-title">
-          <div className="campaign-topline"><span className="campaign-badge"><span /> COMPRAR. PARTICIPAR. SOÑAR.</span><span className="edition">SANTACRUZ</span></div>
-          <div className="campaign-copy">
-            <p className="campaign-eyebrow">TÚ PONES LA CONFIANZA</p>
-            <h1 id="campaign-title">Nosotros ponemos<br />la <em>emoción de ganar.</em></h1>
-            <p className="campaign-description">Tus compras pueden traer algo más a casa.<br />Registra tus facturas y participa por<br className="desktop-break" /> electrodomésticos para tu hogar.</p>
-          </div>
-
-          <div className="prize-display">
-            <span className="prize-stamp"><Icon name="gift" /> Premios para<br /><strong>tu hogar</strong></span>
-            <Prizes />
-          </div>
-
-          <div className="participation">
-            <p>ASÍ DE FÁCIL ES PARTICIPAR</p>
-            <ol>
-              <li><span className="step-icon"><Icon name="user" /></span><span><small>PASO 01</small>Crea tu cuenta</span></li>
-              <li><span className="step-icon"><Icon name="receipt" /></span><span><small>PASO 02</small>Ingresa tu factura</span></li>
-              <li><span className="step-icon"><Icon name="gift" /></span><span><small>PASO 03</small>¡Participa!</span></li>
-            </ol>
-          </div>
-          <p className="campaign-footnote">Conserva tu factura. Las condiciones de participación se publicarán al lanzamiento.</p>
+        <section className="campaign" aria-label="Viaje de premios: por tus compras Santacruz te lleva a San Andrés">
+          <img
+            src="/evento-aniversario.jpeg"
+            alt="Por tus compras Santacruz te lleva a San Andrés. Por compras iguales o superiores a $70.000, regístrate e ingresa el número de tu factura. Válido del 17 de noviembre al 17 de diciembre de 2026."
+          />
         </section>
 
         <section className={`auth-panel auth-panel--${mode}`} aria-label="Acceso de clientes">
