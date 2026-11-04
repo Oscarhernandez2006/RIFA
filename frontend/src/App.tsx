@@ -37,7 +37,6 @@ function PasswordField({ confirm = false, newAccount = false }: { confirm?: bool
           autoComplete={newAccount || confirm ? 'new-password' : 'current-password'}
           placeholder={confirm ? 'Repite tu contraseña' : 'Ingresa tu contraseña'}
           required
-          minLength={8}
           maxLength={128}
         />
         <button type="button" className="password-toggle" aria-label={`${visible ? 'Ocultar' : 'Mostrar'} ${confirm ? 'confirmación de contraseña' : 'contraseña'}`} aria-pressed={visible} onClick={() => setVisible(!visible)}>
@@ -114,7 +113,7 @@ function AuthForm({ mode, onSwitch, onAuthenticated }: { mode: 'register' | 'log
           <PasswordField key={mode} newAccount={register} />
           {register && <PasswordField confirm />}
         </div>
-        {register && <p className="field-hint">Usa al menos 8 caracteres para tu contraseña.</p>}
+        {register && <p className="field-hint">Elige la contraseña que prefieras; solo debe coincidir en los dos campos.</p>}
         {passwordError && <p className="form-message error-message" role="alert">{passwordError}</p>}
         {!register && (
           <div className="login-help">

@@ -29,7 +29,7 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'string', 'email', 'max:254', 'unique:users,email'],
             'phone' => ['required', 'string', 'regex:/^\+?[0-9 ()\-]{7,20}$/'],
-            'password' => ['required', 'string', 'min:8', 'max:128', 'confirmed'],
+            'password' => ['required', 'string', 'max:128', 'confirmed'],
         ], [
             'name.required' => 'Ingresa tu nombre completo.',
             'name.string' => 'El nombre no es válido.',
@@ -44,7 +44,6 @@ class AuthController extends Controller
             'phone.regex' => 'Ingresa un número de celular válido.',
             'password.required' => 'Ingresa tu contraseña.',
             'password.string' => 'La contraseña no es válida.',
-            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
             'password.max' => 'La contraseña debe tener como máximo 128 caracteres.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
