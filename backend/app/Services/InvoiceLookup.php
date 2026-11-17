@@ -12,9 +12,12 @@ use Throwable;
 class InvoiceLookup
 {
     /**
-     * @return array{document_number: string, issued_on: string, point_of_sale: ?string, net_total: float, annulled: bool}|null
+     * Busca la factura por consecutivo dentro del punto de venta indicado (id_co).
+     * La API no filtra por tienda y el consecutivo se repite entre tiendas.
+     *
+     * @return array{document_type: string, document_number: string, issued_on: string, point_of_sale: ?string, net_total: float, annulled: bool}|null
      */
-    public function find(string $type, int $consecutive): ?array
+    public function find(int $consecutive, int $pointOfSale): ?array
     {
         $config = config('services.invoices');
 
@@ -32,7 +35,6 @@ class InvoiceLookup
                     'fecha_inicio' => $config['start_date'],
                     'fecha_fin' => $config['end_date'],
                     'cia' => $config['company'],
-                    'tipo_docto' => $type,
                     'consec' => $consecutive,
                     'token' => $config['token'],
                 ]);
@@ -55,7 +57,10 @@ class InvoiceLookup
 
         $rows = array_values(array_filter(
             $rows,
-            fn ($row) => is_array($row) && $this->matches($row['nro_documento'] ?? null, $type, $consecutive),
+            fn ($row) => is_array($row)
+                && is_numeric($row['id_co'] ?? null)
+                && (int) $row['id_co'] === $pointOfSale
+                && $this->parse($row['nro_documento'] ?? null, $consecutive) !== null,
         ));
 
         if ($rows === []) {
@@ -63,6 +68,7 @@ class InvoiceLookup
         }
 
         $row = $rows[0];
+        $documentType = $this->parse($row['nro_documento'], $consecutive);
 
         try {
             $issuedOn = CarbonImmutable::parse($row['fecha_documento'])->toDateString();
@@ -76,22 +82,27 @@ class InvoiceLookup
             throw new InvoiceServiceUnavailable;
         }
 
-        $pointOfSale = is_string($row['punto_venta'] ?? null) ? trim($row['punto_venta']) : '';
+        $pointOfSaleName = is_string($row['punto_venta'] ?? null) ? trim($row['punto_venta']) : '';
 
         return [
+            'document_type' => $documentType,
             'document_number' => trim($row['nro_documento']),
             'issued_on' => $issuedOn,
-            'point_of_sale' => $pointOfSale !== '' ? mb_substr($pointOfSale, 0, 120) : null,
+            'point_of_sale' => $pointOfSaleName !== '' ? mb_substr($pointOfSaleName, 0, 120) : null,
             'net_total' => (float) $row['fac_valor_neto'],
             'annulled' => collect($rows)->contains(fn ($item) => filled($item['fecha_ts_anulacion'] ?? null)),
         ];
     }
 
-    private function matches(mixed $number, string $type, int $consecutive): bool
+    /**
+     * Devuelve el tipo de documento (prefijo) si el número corresponde al consecutivo buscado.
+     */
+    private function parse(mixed $number, int $consecutive): ?string
     {
-        return is_string($number)
-            && preg_match('/^\s*([0-9A-Z]+)-0*(\d+)\s*$/i', $number, $parts) === 1
-            && strtoupper($parts[1]) === $type
-            && (int) $parts[2] === $consecutive;
+        if (! is_string($number) || preg_match('/^\s*([0-9A-Z]{1,5})-0*(\d+)\s*$/i', $number, $parts) !== 1) {
+            return null;
+        }
+
+        return (int) $parts[2] === $consecutive ? strtoupper($parts[1]) : null;
     }
 }

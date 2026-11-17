@@ -116,8 +116,8 @@ por IP. El endpoint de usuario requiere autenticacion y no expone hashes.
 | POST | `/api/auth/login` | Validar credenciales y abrir sesion |
 | GET | `/api/auth/user` | Consultar usuario autenticado |
 | POST | `/api/auth/logout` | Invalidar sesion |
-| GET | `/api/invoices` | Listar las facturas del cliente autenticado |
-| POST | `/api/invoices` | Validar y registrar una factura (`invoice_number`) |
+| GET | `/api/invoices` | Listar las facturas del cliente autenticado con `tickets_total` |
+| POST | `/api/invoices` | Validar y registrar una factura (`invoice_number`, `point_of_sale`); devuelve `tickets` |
 
 Las solicitudes POST requieren `X-CSRF-TOKEN` obtenido de `/api/auth/csrf`
 y la misma cookie de sesion. No excluyas estas rutas de la proteccion CSRF.
@@ -125,30 +125,55 @@ Las respuestas privadas llevan `Cache-Control: no-store`.
 
 ## Registro de facturas
 
-En `/facturas` el cliente escribe el numero de documento tal como aparece en la
-factura, por ejemplo `07F-00028641` (se acepta en minusculas y sin ceros a la
-izquierda). Laravel lo separa en tipo `07F` y consecutivo `28641` y consulta
-`facturas-pos` con `cia=4` y el rango de la campana (1 de octubre a 31 de
-diciembre de 2026). El token viaja como parametro `token` solo desde el servidor;
+En `/facturas` el registro tiene dos pasos. Primero el cliente escribe solo el
+consecutivo de la factura: los digitos que siguen a la letra `C` en la linea
+«Factura electronica de venta» del tiquete (`931C25533` → `25533`). Al pulsar
+**Continuar** elige el punto de venta donde compro y pulsa **Validar y registrar**.
+El servidor tambien acepta el numero con prefijo (`931C25533`, `01F-00025533`),
+siempre que el prefijo incluya una letra.
+
+Laravel consulta `facturas-pos` con `cia=4`, `consec` y el rango de la campana
+(1 de octubre a 31 de diciembre de 2026) y filtra las filas por `id_co` (centro
+de operacion) del punto de venta elegido. **El consecutivo se repite entre
+tiendas** (cada PDV lleva su propia numeracion) y la API ignora los filtros por
+tienda, por eso el punto de venta es obligatorio y forma parte de la clave unica.
+El prefijo real (`01F` en todas las tiendas) se toma de la respuesta y se guarda
+en `document_type`. El token viaja como parametro `token` solo desde el servidor;
 nunca llega al navegador ni se escribe en los logs.
 
+Puntos de venta (`services.invoices.points_of_sale`, por `id_co`): 402 Malambo,
+403 La Granja, 405 La 43, 406 Simon, 407 La 70, 411 Pereira Dosquebradas,
+412 Bucaramanga, 413 La 93, 414 Centro, 415 Cartagena. El listado
+`GET /api/invoices` los devuelve en `points_of_sale` para el selector.
+
 - Si la API devuelve la factura (y su `nro_documento` coincide), se guarda en la
-  tabla `invoices` con numero, fecha, punto de venta y valor neto, y aparece en
-  «Mis facturas». No se guardan datos personales del comprador.
+  tabla `invoices` con numero, fecha, punto de venta, valor neto y boletas, y
+  aparece en «Mis facturas». No se guardan datos personales del comprador.
+- **Boletas:** se otorga 1 boleta por cada `INVOICE_TICKET_VALUE` pesos
+  ($70.000 por defecto) del valor neto, redondeando hacia abajo. Ejemplo:
+  $210.000 = 3 boletas, $150.000 = 2 boletas. El excedente no se acumula entre
+  facturas. Una factura menor al valor de una boleta se rechaza y no se guarda.
+  La cantidad se calcula en el servidor al registrar (`tickets`) y el listado
+  devuelve `tickets_total` y `ticket_value`.
 - Cada factura se registra una sola vez en toda la campana (indice unico por
-  compania, tipo y consecutivo), aunque lo intente otra cuenta.
+  compania, punto de venta, tipo y consecutivo), aunque lo intente otra cuenta.
 - Se rechazan formatos invalidos, facturas inexistentes y facturas anuladas
   (`fecha_ts_anulacion`). Si la API falla o no responde, se informa con HTTP 503
   y no se guarda nada.
 - El registro admite 10 intentos por minuto por cliente.
 
 Configuracion (`backend/.env` o Dokploy): `INVOICE_API_QUERY_TOKEN` (obligatorio),
-`INVOICE_API_URL`, `INVOICE_COMPANY`, `INVOICE_CAMPAIGN_START` e
-`INVOICE_CAMPAIGN_END` (con los valores anteriores por defecto).
+`INVOICE_API_URL`, `INVOICE_COMPANY`, `INVOICE_CAMPAIGN_START`,
+`INVOICE_CAMPAIGN_END` e `INVOICE_TICKET_VALUE` (con los valores anteriores por defecto).
 
 Observado el 20 de octubre de 2026: la API solo devolvia datos desde el 16 de
 octubre aproximadamente, aunque el rango solicitado empiece el 1 de octubre.
-Facturas anteriores a esa ventana se informan como no encontradas.
+El 17 de noviembre de 2026 solo devolvia datos desde el 15 de noviembre: la
+ventana de datos parece movil (pocos dias hacia atras), asi que las facturas
+deben registrarse pronto despues de la compra. Facturas fuera de esa ventana se
+informan como no encontradas. La API limita cada respuesta a 1000 filas y
+admite `limit`/`page`; la consulta por `consec` devuelve pocas filas y no se ve
+afectada.
 
 La recuperacion de contrasena no esta habilitada y lo informa explicitamente,
 sin simular el envio de correos.
