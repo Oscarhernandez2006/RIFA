@@ -259,14 +259,42 @@ class InvoiceTest extends TestCase
             'tickets' => 3,
         ]);
 
+        $this->fakeApi([$this->row()]);
+
         foreach ([$owner, User::factory()->create()] as $user) {
             $this->register($user, '931C25533')
                 ->assertUnprocessable()
                 ->assertJsonPath('errors.invoice_number.0', 'Esta factura ya fue registrada en la campaña.');
         }
 
-        Http::assertNothingSent();
         $this->assertDatabaseCount('invoices', 1);
+    }
+
+    public function test_same_consecutive_in_several_series_of_a_store_uses_the_most_recent_available(): void
+    {
+        // Caso real: La 93 tiene 21067 en las series 01F, 04F y 02F con fechas y valores distintos.
+        $user = User::factory()->create();
+        $this->fakeApi([
+            $this->row(['nro_documento' => '01F-00021067', 'fecha_documento' => '2026-10-11T00:00:00', 'fac_valor_neto' => 65055.0, 'tipo_comercial' => 'A']),
+            $this->row(['nro_documento' => '01F-00021067', 'fecha_documento' => '2026-10-11T00:00:00', 'fac_valor_neto' => 65055.0, 'tipo_comercial' => 'B']),
+            $this->row(['nro_documento' => '04F-00021067', 'fecha_documento' => '2026-11-07T00:00:00', 'fac_valor_neto' => 140000.0, 'fecha_ts_anulacion' => '2026-11-07T12:00:00']),
+            $this->row(['nro_documento' => '02F-00021067', 'fecha_documento' => '2026-11-17T00:00:00', 'fac_valor_neto' => 311206.0, 'tipo_comercial' => 'A']),
+            $this->row(['nro_documento' => '02F-00021067', 'fecha_documento' => '2026-11-17T00:00:00', 'fac_valor_neto' => 311206.0, 'tipo_comercial' => 'B']),
+        ]);
+
+        $this->register($user, '21067')
+            ->assertCreated()
+            ->assertJsonPath('invoice.number', '02F-00021067')
+            ->assertJsonPath('invoice.net_total', 311206)
+            ->assertJsonPath('invoice.tickets', 4);
+
+        // La 02F ya está registrada y la 04F está anulada: queda la 01F, que no alcanza el mínimo.
+        $this->register($user, '21067')
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.invoice_number.0', 'Esta factura no alcanza el mínimo de $70.000 para obtener una boleta. Se otorga una boleta por cada $70.000 de compra.');
+
+        $this->assertDatabaseCount('invoices', 1);
+        $this->assertDatabaseHas('invoices', ['document_type' => '02F', 'consecutive' => 21067, 'point_of_sale_id' => 413]);
     }
 
     public function test_service_failures_return_unavailable_and_do_not_save(): void

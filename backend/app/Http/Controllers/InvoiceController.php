@@ -66,28 +66,35 @@ class InvoiceController extends Controller
             $this->fail('El número de factura no es válido.');
         }
 
-        $alreadyRegistered = Invoice::where('company_id', $company)
-            ->where('point_of_sale_id', $pointOfSale)
-            ->where('consecutive', $consecutive)
-            ->exists();
-
-        if ($alreadyRegistered) {
-            $this->fail(self::DUPLICATE);
-        }
-
         try {
-            $found = $lookup->find($consecutive, $pointOfSale, $company);
+            $candidates = $lookup->find($consecutive, $pointOfSale, $company);
         } catch (InvoiceServiceUnavailable) {
             return response()->json([
                 'message' => 'No pudimos validar tu factura en este momento. Inténtalo de nuevo en unos minutos.',
             ], 503);
         }
 
-        if ($found === null) {
+        if ($candidates === []) {
             $this->fail('No encontramos esta factura en el punto de venta seleccionado. Revisa el número y la tienda, y que la compra sea entre el 1 de octubre y el 31 de diciembre de 2026.');
         }
 
-        if ($found['annulled']) {
+        // Varias series de la tienda pueden compartir el consecutivo: se descartan las ya
+        // registradas y se toma la más reciente que no esté anulada.
+        $registered = Invoice::where('company_id', $company)
+            ->where('point_of_sale_id', $pointOfSale)
+            ->where('consecutive', $consecutive)
+            ->pluck('document_type')
+            ->all();
+
+        $available = array_values(array_filter($candidates, fn (array $candidate) => ! in_array($candidate['document_type'], $registered, true)));
+
+        if ($available === []) {
+            $this->fail(self::DUPLICATE);
+        }
+
+        $found = collect($available)->first(fn (array $candidate) => ! $candidate['annulled']);
+
+        if ($found === null) {
             $this->fail('Esta factura está anulada y no puede participar.');
         }
 

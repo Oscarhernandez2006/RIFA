@@ -12,12 +12,14 @@ use Throwable;
 class InvoiceLookup
 {
     /**
-     * Busca la factura por consecutivo dentro del punto de venta indicado (id_co).
-     * La API no filtra por tienda y el consecutivo se repite entre tiendas.
+     * Busca las facturas con ese consecutivo en el punto de venta indicado (id_co).
+     * La API no filtra por tienda; además cada tienda maneja varias series (01F, 02F,
+     * 04F...) con contadores propios, por lo que un mismo consecutivo puede
+     * corresponder a varias facturas. Se devuelven todas, de la más reciente a la más antigua.
      *
-     * @return array{document_type: string, document_number: string, issued_on: string, point_of_sale: ?string, net_total: float, annulled: bool}|null
+     * @return list<array{document_type: string, document_number: string, issued_on: string, point_of_sale: ?string, net_total: float, annulled: bool}>
      */
-    public function find(int $consecutive, int $pointOfSale, int $company): ?array
+    public function find(int $consecutive, int $pointOfSale, int $company): array
     {
         $config = config('services.invoices');
 
@@ -55,20 +57,30 @@ class InvoiceLookup
             throw new InvoiceServiceUnavailable;
         }
 
-        $rows = array_values(array_filter(
+        $rows = array_filter(
             $rows,
             fn ($row) => is_array($row)
                 && is_numeric($row['id_co'] ?? null)
                 && (int) $row['id_co'] === $pointOfSale
                 && $this->parse($row['nro_documento'] ?? null, $consecutive) !== null,
-        ));
+        );
 
-        if ($rows === []) {
-            return null;
-        }
+        // La API devuelve una fila por ítem de la factura: se agrupa por número completo.
+        return collect($rows)
+            ->groupBy(fn (array $row) => $this->parse($row['nro_documento'], $consecutive))
+            ->map(fn ($items, string $documentType) => $this->invoice($items->values()->all(), $documentType))
+            ->sortByDesc('issued_on')
+            ->values()
+            ->all();
+    }
 
+    /**
+     * @param  non-empty-list<array<string, mixed>>  $rows  Filas (ítems) de una misma factura.
+     * @return array{document_type: string, document_number: string, issued_on: string, point_of_sale: ?string, net_total: float, annulled: bool}
+     */
+    private function invoice(array $rows, string $documentType): array
+    {
         $row = $rows[0];
-        $documentType = $this->parse($row['nro_documento'], $consecutive);
 
         try {
             $issuedOn = CarbonImmutable::parse($row['fecha_documento'])->toDateString();
