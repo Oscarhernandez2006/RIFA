@@ -26,7 +26,8 @@ class InvoiceController extends Controller
             'tickets_total' => (int) $invoices->sum('tickets'),
             'ticket_value' => (int) config('services.invoices.ticket_value'),
             'points_of_sale' => collect(config('services.invoices.points_of_sale'))
-                ->map(fn (string $name, int $id) => ['id' => $id, 'name' => $name])
+                ->map(fn (array $store, int $id) => ['id' => $id, 'name' => $store['name']])
+                ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
                 ->values(),
         ])->header('Cache-Control', 'no-store');
     }
@@ -59,7 +60,7 @@ class InvoiceController extends Controller
         preg_match('/(\d{1,10})$/', $request->input('invoice_number'), $digits);
         $consecutive = (int) $digits[1];
         $pointOfSale = (int) $request->input('point_of_sale');
-        $company = (int) config('services.invoices.company');
+        $company = (int) config("services.invoices.points_of_sale.{$pointOfSale}.company");
 
         if ($consecutive < 1) {
             $this->fail('El número de factura no es válido.');
@@ -75,7 +76,7 @@ class InvoiceController extends Controller
         }
 
         try {
-            $found = $lookup->find($consecutive, $pointOfSale);
+            $found = $lookup->find($consecutive, $pointOfSale, $company);
         } catch (InvoiceServiceUnavailable) {
             return response()->json([
                 'message' => 'No pudimos validar tu factura en este momento. Inténtalo de nuevo en unos minutos.',

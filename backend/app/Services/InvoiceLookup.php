@@ -17,7 +17,7 @@ class InvoiceLookup
      *
      * @return array{document_type: string, document_number: string, issued_on: string, point_of_sale: ?string, net_total: float, annulled: bool}|null
      */
-    public function find(int $consecutive, int $pointOfSale): ?array
+    public function find(int $consecutive, int $pointOfSale, int $company): ?array
     {
         $config = config('services.invoices');
 
@@ -34,7 +34,7 @@ class InvoiceLookup
                 ->get($config['url'], [
                     'fecha_inicio' => $config['start_date'],
                     'fecha_fin' => $config['end_date'],
-                    'cia' => $config['company'],
+                    'cia' => $company,
                     'consec' => $consecutive,
                     'token' => $config['token'],
                 ]);

@@ -132,19 +132,27 @@ consecutivo de la factura: los digitos que siguen a la letra `C` en la linea
 El servidor tambien acepta el numero con prefijo (`931C25533`, `01F-00025533`),
 siempre que el prefijo incluya una letra.
 
-Laravel consulta `facturas-pos` con `cia=4`, `consec` y el rango de la campana
-(1 de octubre a 31 de diciembre de 2026) y filtra las filas por `id_co` (centro
-de operacion) del punto de venta elegido. **El consecutivo se repite entre
-tiendas** (cada PDV lleva su propia numeracion) y la API ignora los filtros por
-tienda, por eso el punto de venta es obligatorio y forma parte de la clave unica.
-El prefijo real (`01F` en todas las tiendas) se toma de la respuesta y se guarda
-en `document_type`. El token viaja como parametro `token` solo desde el servidor;
-nunca llega al navegador ni se escribe en los logs.
+Laravel consulta `facturas-pos` con la `cia` (compania) del punto de venta
+elegido, `consec` y el rango de la campana (1 de octubre a 31 de diciembre de
+2026), y filtra las filas por `id_co` (centro de operacion) de esa tienda.
+Sin `cia` la API devuelve todas las companias mezcladas. **El consecutivo se
+repite entre tiendas** (cada PDV lleva su propia numeracion) y la API ignora los
+filtros por tienda, por eso el punto de venta es obligatorio y forma parte de la
+clave unica junto con la compania. El prefijo real (`01F`, `02F`, etc.) se toma
+de la respuesta y se guarda en `document_type`. El token viaja como parametro
+`token` solo desde el servidor; nunca llega al navegador ni se escribe en los logs.
 
-Puntos de venta (`services.invoices.points_of_sale`, por `id_co`): 402 Malambo,
-403 La Granja, 405 La 43, 406 Simon, 407 La 70, 411 Pereira Dosquebradas,
-412 Bucaramanga, 413 La 93, 414 Centro, 415 Cartagena. El listado
-`GET /api/invoices` los devuelve en `points_of_sale` para el selector.
+Puntos de venta (`services.invoices.points_of_sale`, por `id_co`, con su `company`):
+
+| cia | Compania | Puntos de venta (`id_co`) |
+| --- | --- | --- |
+| 4 | Carnes Santacruz S.A.S | 402 Malambo, 403 La Granja, 405 La 43, 406 Simon, 407 La 70, 411 Pereira Dosquebradas, 412 Bucaramanga, 413 La 93, 414 Centro, 415 Cartagena |
+| 6 | Cristian Fabian Serrano Millan | 603 Concord, 605 Alameda 1, 606 Alameda 2 |
+| 7 | Inversiones Serueda S.A.S | 701 San Felipe, 702 Olaya |
+
+Para agregar una tienda nueva basta con anadir su `id_co`, nombre y `company` en
+`backend/config/services.php`. El listado `GET /api/invoices` las devuelve
+ordenadas por nombre en `points_of_sale` para el modal.
 
 - Si la API devuelve la factura (y su `nro_documento` coincide), se guarda en la
   tabla `invoices` con numero, fecha, punto de venta, valor neto y boletas, y
@@ -163,7 +171,7 @@ Puntos de venta (`services.invoices.points_of_sale`, por `id_co`): 402 Malambo,
 - El registro admite 10 intentos por minuto por cliente.
 
 Configuracion (`backend/.env` o Dokploy): `INVOICE_API_QUERY_TOKEN` (obligatorio),
-`INVOICE_API_URL`, `INVOICE_COMPANY`, `INVOICE_CAMPAIGN_START`,
+`INVOICE_API_URL`, `INVOICE_CAMPAIGN_START`,
 `INVOICE_CAMPAIGN_END` e `INVOICE_TICKET_VALUE` (con los valores anteriores por defecto).
 
 Observado el 20 de octubre de 2026: la API solo devolvia datos desde el 16 de

@@ -26,11 +26,15 @@ class InvoiceTest extends TestCase
         config(['services.invoices' => [
             'url' => self::URL,
             'token' => 'test-token',
-            'company' => 4,
             'start_date' => '2026-10-01',
             'end_date' => '2026-12-31',
             'ticket_value' => 70000,
-            'points_of_sale' => [413 => 'La 93', 414 => 'Centro', 402 => 'Malambo'],
+            'points_of_sale' => [
+                413 => ['name' => 'La 93', 'company' => 4],
+                414 => ['name' => 'Centro', 'company' => 4],
+                402 => ['name' => 'Malambo', 'company' => 4],
+                701 => ['name' => 'San Felipe', 'company' => 7],
+            ],
         ]]);
     }
 
@@ -94,8 +98,23 @@ class InvoiceTest extends TestCase
             ->assertJsonPath('invoices.0.tickets', 3)
             ->assertJsonPath('tickets_total', 3)
             ->assertJsonPath('ticket_value', 70000)
-            ->assertJsonCount(3, 'points_of_sale')
-            ->assertJsonPath('points_of_sale.0', ['id' => 413, 'name' => 'La 93']);
+            ->assertJsonCount(4, 'points_of_sale')
+            ->assertJsonPath('points_of_sale.0', ['id' => 414, 'name' => 'Centro'])
+            ->assertJsonPath('points_of_sale.1', ['id' => 413, 'name' => 'La 93']);
+    }
+
+    public function test_store_from_another_company_is_queried_with_its_own_company(): void
+    {
+        $user = User::factory()->create();
+        $this->fakeApi([$this->row(['id_co' => '701', 'punto_venta' => 'SAN FELIPE', 'nro_documento' => '01F-00012345'])]);
+
+        $this->register($user, '12345', 701)
+            ->assertCreated()
+            ->assertJsonPath('invoice.point_of_sale', 'SAN FELIPE')
+            ->assertJsonPath('invoice.tickets', 3);
+
+        Http::assertSent(fn (Request $request) => $request->url() === self::URL.'?fecha_inicio=2026-10-01&fecha_fin=2026-12-31&cia=7&consec=12345&token=test-token');
+        $this->assertDatabaseHas('invoices', ['company_id' => 7, 'point_of_sale_id' => 701, 'consecutive' => 12345]);
     }
 
     public function test_number_is_accepted_with_receipt_or_api_prefixes(): void
