@@ -201,8 +201,11 @@ class InvoiceTest extends TestCase
         foreach (array_keys($cases) as $consecutive) {
             $this->register($user, (string) $consecutive)
                 ->assertUnprocessable()
-                ->assertJsonPath('errors.invoice_number.0', 'Esta factura no alcanza el mínimo de $70.000 para obtener una boleta. Se otorga una boleta por cada $70.000 de compra.');
+                ->assertJsonPath('errors.invoice_number.0', fn (string $message) => str_contains($message, 'no alcanza el mínimo de $70.000'));
         }
+
+        $this->register($user, '1')
+            ->assertJsonPath('errors.invoice_number.0', 'La factura 01F-00000001 del 17/11/2026 es por $69.999 y no alcanza el mínimo de $70.000 para obtener una boleta. Se otorga una boleta por cada $70.000 de compra.');
 
         $this->assertDatabaseCount('invoices', 0);
     }
@@ -270,31 +273,60 @@ class InvoiceTest extends TestCase
         $this->assertDatabaseCount('invoices', 1);
     }
 
-    public function test_same_consecutive_in_several_series_of_a_store_uses_the_most_recent_available(): void
+    public function test_same_consecutive_in_several_series_of_a_store_uses_the_most_recent_one(): void
     {
-        // Caso real: La 93 tiene 21067 en las series 01F, 04F y 02F con fechas y valores distintos.
+        // Casos reales en La 93: 21067 y 21146 existen en las series 01F, 04F y 02F con fechas y valores distintos.
         $user = User::factory()->create();
         $this->fakeApi([
-            $this->row(['nro_documento' => '01F-00021067', 'fecha_documento' => '2026-10-11T00:00:00', 'fac_valor_neto' => 65055.0, 'tipo_comercial' => 'A']),
-            $this->row(['nro_documento' => '01F-00021067', 'fecha_documento' => '2026-10-11T00:00:00', 'fac_valor_neto' => 65055.0, 'tipo_comercial' => 'B']),
-            $this->row(['nro_documento' => '04F-00021067', 'fecha_documento' => '2026-11-07T00:00:00', 'fac_valor_neto' => 140000.0, 'fecha_ts_anulacion' => '2026-11-07T12:00:00']),
-            $this->row(['nro_documento' => '02F-00021067', 'fecha_documento' => '2026-11-17T00:00:00', 'fac_valor_neto' => 311206.0, 'tipo_comercial' => 'A']),
-            $this->row(['nro_documento' => '02F-00021067', 'fecha_documento' => '2026-11-17T00:00:00', 'fac_valor_neto' => 311206.0, 'tipo_comercial' => 'B']),
+            $this->row(['nro_documento' => '01F-00021146', 'fecha_documento' => '2026-10-12T00:00:00', 'fac_valor_neto' => 23860.0, 'tipo_comercial' => 'A']),
+            $this->row(['nro_documento' => '01F-00021146', 'fecha_documento' => '2026-10-12T00:00:00', 'fac_valor_neto' => 23860.0, 'tipo_comercial' => 'B']),
+            $this->row(['nro_documento' => '04F-00021146', 'fecha_documento' => '2026-11-08T00:00:00', 'fac_valor_neto' => 41750.0]),
+            $this->row(['nro_documento' => '02F-00021146', 'fecha_documento' => '2026-11-18T00:00:00', 'fac_valor_neto' => 248649.0, 'tipo_comercial' => 'A']),
+            $this->row(['nro_documento' => '02F-00021146', 'fecha_documento' => '2026-11-18T00:00:00', 'fac_valor_neto' => 248649.0, 'tipo_comercial' => 'B']),
         ]);
 
-        $this->register($user, '21067')
+        $this->register($user, '21146')
             ->assertCreated()
-            ->assertJsonPath('invoice.number', '02F-00021067')
-            ->assertJsonPath('invoice.net_total', 311206)
-            ->assertJsonPath('invoice.tickets', 4);
+            ->assertJsonPath('invoice.number', '02F-00021146')
+            ->assertJsonPath('invoice.net_total', 248649)
+            ->assertJsonPath('invoice.tickets', 3);
 
-        // La 02F ya está registrada y la 04F está anulada: queda la 01F, que no alcanza el mínimo.
-        $this->register($user, '21067')
-            ->assertUnprocessable()
-            ->assertJsonPath('errors.invoice_number.0', 'Esta factura no alcanza el mínimo de $70.000 para obtener una boleta. Se otorga una boleta por cada $70.000 de compra.');
+        // Si la más reciente ya está registrada no se cae a series antiguas (01F/04F son otras compras).
+        foreach ([$user, User::factory()->create()] as $other) {
+            $this->register($other, '21146')
+                ->assertUnprocessable()
+                ->assertJsonPath('errors.invoice_number.0', 'Esta factura ya fue registrada en la campaña.');
+        }
 
         $this->assertDatabaseCount('invoices', 1);
-        $this->assertDatabaseHas('invoices', ['document_type' => '02F', 'consecutive' => 21067, 'point_of_sale_id' => 413]);
+        $this->assertDatabaseHas('invoices', ['document_type' => '02F', 'consecutive' => 21146, 'point_of_sale_id' => 413]);
+    }
+
+    public function test_annulled_most_recent_series_falls_back_to_the_next_valid_one(): void
+    {
+        $this->fakeApi([
+            $this->row(['nro_documento' => '01F-00021067', 'fecha_documento' => '2026-11-10T00:00:00', 'fac_valor_neto' => 90000.0]),
+            $this->row(['nro_documento' => '02F-00021067', 'fecha_documento' => '2026-11-17T00:00:00', 'fac_valor_neto' => 311206.0, 'fecha_ts_anulacion' => '2026-11-17T12:00:00']),
+        ]);
+
+        $this->register(User::factory()->create(), '21067')
+            ->assertCreated()
+            ->assertJsonPath('invoice.number', '01F-00021067')
+            ->assertJsonPath('invoice.tickets', 1);
+    }
+
+    public function test_series_with_the_same_date_are_ordered_by_creation_time(): void
+    {
+        $this->fakeApi([
+            $this->row(['nro_documento' => '02F-00030000', 'fac_valor_neto' => 80000.0, 'fecha_ts_creacion' => '2026-11-17T09:00:00.000000']),
+            $this->row(['nro_documento' => '01F-00030000', 'fac_valor_neto' => 150000.0, 'fecha_ts_creacion' => '2026-11-17T18:30:00.000000']),
+            $this->row(['nro_documento' => '04F-00030000', 'fac_valor_neto' => 210000.0, 'fecha_ts_creacion' => '2026-11-17T11:15:00.000000']),
+        ]);
+
+        $this->register(User::factory()->create(), '30000')
+            ->assertCreated()
+            ->assertJsonPath('invoice.number', '01F-00030000')
+            ->assertJsonPath('invoice.tickets', 2);
     }
 
     public function test_service_failures_return_unavailable_and_do_not_save(): void

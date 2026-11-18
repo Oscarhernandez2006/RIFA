@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\InvoiceServiceUnavailable;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -65,11 +66,13 @@ class InvoiceLookup
                 && $this->parse($row['nro_documento'] ?? null, $consecutive) !== null,
         );
 
-        // La API devuelve una fila por ítem de la factura: se agrupa por número completo.
+        // La API devuelve una fila por ítem de la factura: se agrupa por número completo y se
+        // ordena de la más reciente a la más antigua (fecha y, para desempatar, hora de creación).
         return collect($rows)
             ->groupBy(fn (array $row) => $this->parse($row['nro_documento'], $consecutive))
             ->map(fn ($items, string $documentType) => $this->invoice($items->values()->all(), $documentType))
-            ->sortByDesc('issued_on')
+            ->sortByDesc(fn (array $invoice) => $invoice['issued_on'].' '.$invoice['created_at'])
+            ->map(fn (array $invoice) => Arr::except($invoice, 'created_at'))
             ->values()
             ->all();
     }
@@ -95,6 +98,7 @@ class InvoiceLookup
         }
 
         $pointOfSaleName = is_string($row['punto_venta'] ?? null) ? trim($row['punto_venta']) : '';
+        $createdAt = is_string($row['fecha_ts_creacion'] ?? null) ? trim($row['fecha_ts_creacion']) : '';
 
         return [
             'document_type' => $documentType,
@@ -103,6 +107,7 @@ class InvoiceLookup
             'point_of_sale' => $pointOfSaleName !== '' ? mb_substr($pointOfSaleName, 0, 120) : null,
             'net_total' => (float) $row['fac_valor_neto'],
             'annulled' => collect($rows)->contains(fn ($item) => filled($item['fecha_ts_anulacion'] ?? null)),
+            'created_at' => $createdAt,
         ];
     }
 

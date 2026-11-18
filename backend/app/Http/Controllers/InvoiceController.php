@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\InvoiceServiceUnavailable;
 use App\Models\Invoice;
 use App\Services\InvoiceLookup;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -78,24 +79,23 @@ class InvoiceController extends Controller
             $this->fail('No encontramos esta factura en el punto de venta seleccionado. Revisa el número y la tienda, y que la compra sea entre el 1 de octubre y el 31 de diciembre de 2026.');
         }
 
-        // Varias series de la tienda pueden compartir el consecutivo: se descartan las ya
-        // registradas y se toma la más reciente que no esté anulada.
-        $registered = Invoice::where('company_id', $company)
-            ->where('point_of_sale_id', $pointOfSale)
-            ->where('consecutive', $consecutive)
-            ->pluck('document_type')
-            ->all();
-
-        $available = array_values(array_filter($candidates, fn (array $candidate) => ! in_array($candidate['document_type'], $registered, true)));
-
-        if ($available === []) {
-            $this->fail(self::DUPLICATE);
-        }
-
-        $found = collect($available)->first(fn (array $candidate) => ! $candidate['annulled']);
+        // Cada tienda maneja varias series (01F, 02F...) con contadores propios, así que el
+        // consecutivo puede repetirse. Se toma siempre la factura más reciente no anulada:
+        // si ya está registrada no se cae a series antiguas (serían compras de otras personas).
+        $found = collect($candidates)->first(fn (array $candidate) => ! $candidate['annulled']);
 
         if ($found === null) {
             $this->fail('Esta factura está anulada y no puede participar.');
+        }
+
+        $alreadyRegistered = Invoice::where('company_id', $company)
+            ->where('point_of_sale_id', $pointOfSale)
+            ->where('document_type', $found['document_type'])
+            ->where('consecutive', $consecutive)
+            ->exists();
+
+        if ($alreadyRegistered) {
+            $this->fail(self::DUPLICATE);
         }
 
         $ticketValue = (int) config('services.invoices.ticket_value');
@@ -103,7 +103,10 @@ class InvoiceController extends Controller
 
         if ($tickets < 1) {
             $this->fail(sprintf(
-                'Esta factura no alcanza el mínimo de %s para obtener una boleta. Se otorga una boleta por cada %s de compra.',
+                'La factura %s del %s es por %s y no alcanza el mínimo de %s para obtener una boleta. Se otorga una boleta por cada %s de compra.',
+                $found['document_number'],
+                CarbonImmutable::parse($found['issued_on'])->format('d/m/Y'),
+                $this->pesos((int) floor($found['net_total'])),
                 $this->pesos($ticketValue),
                 $this->pesos($ticketValue),
             ));
